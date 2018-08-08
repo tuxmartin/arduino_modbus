@@ -8,7 +8,7 @@ V Linuxu je treba ho zkompilovat (bez problemu) a ma dokonce vic funkcni, nez zk
 Komunikace pomoci http://www.modbusdriver.com/modpoll.html mi nefungovala, zkousel jsem:
 
 ```
-/modpoll -b 9600 -d 8 -s 1 -p none -m rtu -a 1 -r 500 -c 1 /dev/ttyUSB1
+./modpoll -b 9600 -d 8 -s 1 -p none -m rtu -a 1 -r 500 -c 1 /dev/ttyUSB1
 ```
 
 Zapojeni
