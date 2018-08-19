@@ -10,12 +10,17 @@ byte SendPin = 10;
 #include <Adafruit_BME280.h>
 #define SEALEVELPRESSURE_HPA (1013.25)
 Adafruit_BME280 bme; // I2C
-unsigned long previousMillis = 0;
+unsigned long previousMillis_bme280 = 0;
 const long bme280_interval = 5000;
+unsigned long previousMillis_serial = 0;
+const long serial_speed_test_interval = 2000;
+const long serial_speed_list[] = {9600, 19200, 38400, 57600, 115200};
+int serial_speed_last = 0;
 
 //////////////// registers of your slave ///////////////////
 enum 
 {  
+  SERIAL_SPEED_DETECT_NUMBER,
   DEVICE_TYPE,  
   DEVICE_SUBTYPE,
   DEVICE_FW_VERSION,
@@ -35,6 +40,7 @@ unsigned int holdingRegs[HOLDING_REGS_SIZE]; // function 3 and 16 register array
 //////////////// registers of your slave ///////////////////
 
 void setup () {
+  holdingRegs[SERIAL_SPEED_DETECT_NUMBER] = 0;
   holdingRegs[DEVICE_TYPE] = DEVICE_TYPE_CONST;
   holdingRegs[DEVICE_FW_VERSION] = DEVICE_VER_CONST;
 
@@ -42,7 +48,8 @@ void setup () {
   holdingRegs[BME280_SEALEVELPRESSURE_HPA_H] = sea_level_pressure / 32767;
   holdingRegs[BME280_SEALEVELPRESSURE_HPA_L] = sea_level_pressure - (holdingRegs[BME280_SEALEVELPRESSURE_HPA_H] * 32767);
 
-  modbus_configure(9600, SLAVE_ID, SendPin, HOLDING_REGS_SIZE, 0);
+  //modbus_configure(9600, SLAVE_ID, SendPin, HOLDING_REGS_SIZE, 0);
+  modbus_configure(serial_speed_list[serial_speed_last], SLAVE_ID, SendPin, HOLDING_REGS_SIZE, 0); //9600
 
   pinMode(LEDPIN, OUTPUT);
   digitalWrite(LEDPIN, LOW);
@@ -62,11 +69,31 @@ void loop () {   // nikde nepouzivat zadny delay/sleep!
   modbus_update(holdingRegs);
 
   unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis >= bme280_interval) {
+  if (currentMillis - previousMillis_bme280 >= bme280_interval) {
     // save the last time you blinked the LED
-    previousMillis = currentMillis;  
+    previousMillis_bme280 = currentMillis;  
     read_from_sensor();
   }
+
+  if (currentMillis - previousMillis_serial >= serial_speed_test_interval) {
+    previousMillis_serial = currentMillis;  
+    if (holdingRegs[SERIAL_SPEED_DETECT_NUMBER] != 12345) {      
+      Serial.end();
+      modbus_configure(serial_speed_list[serial_speed_last++], SLAVE_ID, SendPin, HOLDING_REGS_SIZE, 0); //9600      
+    }
+    if (serial_speed_last >= 5 /*sizeof(serial_speed_list)/sizeof(long)*/ ) {
+      serial_speed_last = 0;      
+    }
+    holdingRegs[SERIAL_SPEED_DETECT_NUMBER] = 0;
+  }  
+
+  /*
+  if (holdingRegs[I] == 1) { // Mam merit?
+    holdingRegs[I] = 0; // vynulovat, aby to nemerilo porad dokola
+    // tady by se neco delalo...
+    serialFlushBuffer(); // vyprazdime buffer - to bude delat bordel, pokud budou aktualne prichazet data...
+  }
+  */
 
   digitalWrite(LEDPIN, holdingRegs[LED]);
 }
