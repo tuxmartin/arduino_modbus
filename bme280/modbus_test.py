@@ -17,18 +17,21 @@ MODBUS_16 = 16 # Write multiple registers
 STUPEN    = u'\u00b0' # znak pro stupen
 SERIAL_SPEED_DETECT_NUMBER = 12345
 
+SERIAL_PORT = '/dev/ttyUSB1'
 serial_speed_list   = [9600, 19200, 38400, 57600, 115200]
 #                      0   , 1,     2,     3,     4
-serial_speed_list_I = 1
+serial_speed_list_I = 0
 
 try:
-    dev0 = minimalmodbus.Instrument('/dev/ttyUSB1', 1)  # port name, slave address (in decimal)
+    # Modbus RTU broadcast (slave address = 0):
+    dev0 = minimalmodbus.Instrument(SERIAL_PORT, 1)  # port name, slave address (in decimal)
     dev0.serial.baudrate = serial_speed_list[serial_speed_list_I]
     dev0.serial.bytesize = 8
     dev0.serial.stopbits = 1
     dev0.serial.parity = serial.PARITY_NONE
 
-    dev1 = minimalmodbus.Instrument('/dev/ttyUSB1', 1)  # port name, slave address (in decimal)
+    # Modbus RTU Slave 1 (slave address = 1):
+    dev1 = minimalmodbus.Instrument(SERIAL_PORT, 1)  # port name, slave address (in decimal)
     dev1.serial.baudrate = serial_speed_list[serial_speed_list_I]
     dev1.serial.bytesize = 8
     dev1.serial.stopbits = 1
@@ -39,6 +42,7 @@ except Exception as e:
 
 lock = threading.Lock()
 
+# serial port baud rate detection
 def serial_config_number():
     while True:
         lock.acquire()
@@ -48,9 +52,10 @@ def serial_config_number():
             print(e)
         finally:
             lock.release()
-        sleep(0.1)
+        sleep(0.1) # 100ms
+# serial port baud rate detection
 
-def main():
+def slave_1():
     while True:
         print("SERIAL SPEED = " + str(serial_speed_list[serial_speed_list_I]))
         sleep(frekvenceMereni)
@@ -107,9 +112,8 @@ def main():
         finally:
             lock.release()
 
-#t = threading.Thread(target=serial_config_number, args=(i,))
 t1 = threading.Thread(target=serial_config_number)
-t2 = threading.Thread(target=main)
+t2 = threading.Thread(target=slave_1)
 t1.start()
 t2.start()
 
